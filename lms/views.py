@@ -1,5 +1,5 @@
-from rest_framework import viewsets, permissions
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -7,6 +7,7 @@ from .models import Course, Lesson, Subscription
 from .serializers import CourseSerializer, LessonSerializer
 from .paginators import CoursePaginator, LessonPaginator
 from users.permissions import IsModerator, IsOwner, IsModeratorOrOwner
+from users.services import create_payment_for_course
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -56,7 +57,7 @@ class SubscriptionView(APIView):
         user = request.user
         course_id = request.data.get('course_id')
         if not course_id:
-            return Response({'error': 'Не указан course_id'}, status=400)
+            return Response({'error': 'course_id required'}, status=400)
 
         course = get_object_or_404(Course, id=course_id)
         subscription = Subscription.objects.filter(user=user, course=course)
