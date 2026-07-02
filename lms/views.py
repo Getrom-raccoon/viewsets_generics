@@ -8,6 +8,7 @@ from .serializers import CourseSerializer, LessonSerializer
 from .paginators import CoursePaginator, LessonPaginator
 from users.permissions import IsModerator, IsOwner, IsModeratorOrOwner
 from users.services import create_payment_for_course
+from users.tasks import notify_subscribers_about_course_update
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -28,6 +29,10 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        notify_subscribers_about_course_update.delay(instance.id)
 
 
 class LessonViewSet(viewsets.ModelViewSet):
