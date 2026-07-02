@@ -28,6 +28,8 @@ INSTALLED_APPS = [
     'users',
     'lms',
     'drf_spectacular',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -113,4 +115,26 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API для управления курсами, уроками и платежами',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+}
+
+import os
+from celery.schedules import crontab
+
+# Redis
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+REDIS_DB = os.getenv('REDIS_DB', '0')
+
+# Celery
+CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Moscow'
+CELERY_BEAT_SCHEDULE = {
+    'block_inactive_users': {
+        'task': 'users.tasks.block_inactive_users',
+        'schedule': crontab(day_of_week='*', hour=0, minute=0),  # каждый день в полночь
+    },
 }
