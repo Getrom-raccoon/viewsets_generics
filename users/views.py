@@ -2,12 +2,16 @@ from rest_framework import viewsets, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from rest_framework import filters
 from .models import User, Payment
 from .serializers import UserSerializer, UserRegistrationSerializer, PaymentSerializer
 from .filters import PaymentFilter
 from .permissions import IsModerator, IsOwner
+from lms.models import Course
+from .services import create_payment_for_course
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -51,3 +55,31 @@ class ProfileView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class CreatePaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        course_id = request.data.get('course_id')
+        if not course_id:
+            return Response({'error': 'course_id required'}, status=400)
+
+        course = get_object_or_404(Course, id=course_id)
+        success_url = request.data.get('success_url', 'http://localhost:8000/success/')
+        cancel_url = request.data.get('cancel_url', 'http://localhost:8000/cancel/')
+
+        try:
+            payment = create_payment_for_course(
+                user=request.user,
+                course=course,
+                success_url=success_url,
+                cancel_url=cancel_url
+            )
+            return Response({
+                'payment_id': payment.id,
+                'payment_url': payment.payment_url,
+                'status': payment.status,
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
